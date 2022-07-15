@@ -90,6 +90,7 @@ where r.player_id not in
 (select ch.player_id from cheaters ch)""")).all()
 
 
+
 '''
 with result1 as (select * from client cl
 inner join server s

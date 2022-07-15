@@ -22,6 +22,7 @@ eggs/
 .eggs/
 *.csv
 *.db
+
 *.txt
 lib/
 lib64/
