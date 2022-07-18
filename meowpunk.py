@@ -1,12 +1,10 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Text, Date
+from sqlalchemy import create_engine, MetaData, Table, Column, \
+                         Integer, String, Text, Date, TIMESTAMP
 from sqlalchemy.sql import select, join, text
-from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
-
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Date
 from sqlalchemy.orm import sessionmaker
-from config import DATABASE, client_file, server_file, cheaters_db
+from config import DATABASE, client_file, server_file, cheaters_db, SQL_QUERY
 
 import pandas as pd
 
@@ -25,11 +23,11 @@ session = Session()
 
 
 class Result(Base):
+    """Таблица итоговых результатов по заданным запросам"""
     __tablename__ = 'result'
 
-    id = Column(Integer, primary_key=True)
-    timestamp = Column(Date)
-    player_id = Column(Integer)
+    timestamp = Column(TIMESTAMP)
+    player_id = Column(Integer, primary_key=True)
     event_id = Column(String)
     error_id = Column(String)
     json_server = Column(Text)
@@ -37,26 +35,35 @@ class Result(Base):
 
 
 class Client(Base):
+    """
+    Таблица Client
+    """
     __tablename__ = 'client'
 
     # id = Column(Integer, primary_key=True)
-    timestamp = Column(Date)
+    timestamp = Column('timestamp', TIMESTAMP(timezone=False))
     player_id = Column(Integer)
     error_id = Column(String, primary_key=True)
     json = Column(Text)
 
 
 class Server(Base):
+    """
+    Таблица Server
+    """
     __tablename__ = 'server'
 
     # id = Column(Integer, primary_key=True)
-    timestamp = Column(Date)
+    timestamp = Column('timestamp', TIMESTAMP(timezone=False))
     event_id = Column(String)
     error_id = Column(String, primary_key=True)
     json = Column(Text)
 
 
 class Cheaters(Base):
+    """
+    Таблица Cheaters
+    """
     __tablename__ = 'cheaters'
 
     player_id = Column(Integer, primary_key=True)
@@ -64,41 +71,44 @@ class Cheaters(Base):
 
 
 def csv_to_sql(file_name, table_name):
+    """
+    Обработка csv файла и запись в нужную таблицу из БД
+    """
     df = pd.read_csv(file_name)
     df.to_sql(con=engine, name=table_name, if_exists='append')
 
 
 def table_into_db(db_name, table_name):
+    """
+    Обработка db файла и запись в нужную таблицу из БД
+    """
     cnx = create_engine(f'sqlite:///{db_name}')
     df = pd.read_sql_table(db_name.split('.')[0], cnx)
     df.to_sql(con=engine, name=table_name, if_exists='append')
 
 
-# csv_to_sql(server_file, 'server')
-# csv_to_sql(client_file, 'client')
-# table_into_db(cheaters_db, 'cheaters')
+def main():
+    """
+    Главная точка входа в скрипт и запуск всего
+    """
+    csv_to_sql(server_file, 'server')
+    csv_to_sql(client_file, 'client')
+    table_into_db(cheaters_db, 'cheaters')
 
-q = session.query(Client, Server)\
-                    .join(Server, Client.error_id == Server.error_id).all()
+    # SQL запрос для поиска данных из 3 таблиц
+    q = session.execute(text(SQL_QUERY)).all()
 
-q = session.execute(text("""with result1 as (select * from client cl
-inner join server s
-on cl.error_id = s.error_id)
-select * from
-result1 r
-where r.player_id not in
-(select ch.player_id from cheaters ch)""")).all()
+    # в цикле все записываем в таблицу result
+    for line in q:
+        print(line)
+        timestamp, player_id, event_id, error_id, json_server, json_client = line
+        row = Result(timestamp=timestamp, player_id=player_id,
+                     event_id=event_id, error_id=error_id,
+                     json_server=json_server, json_client=json_client)
+
+        session.add(row)
+        session.commit()
 
 
-
-'''
-with result1 as (select * from client cl
-inner join server s
-on cl.error_id = s.error_id)
-select * from
-result1 r
-where r.player_id not in
-(select ch.player_id from cheaters ch
-where DATEDIFF('day', result1.timestamp, to_timestamp(ch.ban_time, 'MM/DD/YYYY')) <= 1);
-'''
-print(q)
+if __name__ == '__main__':
+    main()
