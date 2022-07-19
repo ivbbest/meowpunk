@@ -1,9 +1,12 @@
 from sqlalchemy import create_engine, MetaData, Table, Column, \
-                         Integer, String, Text, Date, TIMESTAMP
+                         Integer, String, Text, Date, TIMESTAMP, insert
 from sqlalchemy.sql import select, join, text
 from sqlalchemy.engine.url import URL
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+from sqlalchemy.exc import SQLAlchemyError
+
 from config import DATABASE, client_file, server_file, cheaters_db, SQL_QUERY
 
 import pandas as pd
@@ -91,23 +94,46 @@ def main():
     """
     Главная точка входа в скрипт и запуск всего
     """
-    csv_to_sql(server_file, 'server')
-    csv_to_sql(client_file, 'client')
-    table_into_db(cheaters_db, 'cheaters')
+    # csv_to_sql(server_file, 'server')
+    # csv_to_sql(client_file, 'client')
+    # table_into_db(cheaters_db, 'cheaters')
+    columns = ('timestamp', 'player_id', 'event_id', 'error_id', 'json_server', 'json_client')
+
 
     # SQL запрос для поиска данных из 3 таблиц
     q = session.execute(text(SQL_QUERY)).all()
+    print(type(q[1]))
+    print(q[1])
+    breakpoint()
 
+    query2 = "INSERT INTO result VALUES(?, ?, ?, ?, ?, ?)"
+
+    try:
+        r_set = session.execute(query2, q)
+    except SQLAlchemyError as e:
+        # error = str(e.__dict__['orig'])
+        print(e)
+    else:
+        print("No of records added  : ", r_set.rowcount)
+
+    # q_new = [dict(zip(columns, line)) for line in q]
+    # print(q_new[2])
+    # # breakpoint()
+    # try:
+    #     session.execute(Result.__table__.insert().values(q_new))
+    # except Exception as e:
+    #     print(e)
+    #     breakpoint()
     # в цикле все записываем в таблицу result
-    for line in q:
-        print(line)
-        timestamp, player_id, event_id, error_id, json_server, json_client = line
-        row = Result(timestamp=timestamp, player_id=player_id,
-                     event_id=event_id, error_id=error_id,
-                     json_server=json_server, json_client=json_client)
-
-        session.add(row)
-        session.commit()
+    # for line in q:
+    #     print(line)
+    #     timestamp, player_id, event_id, error_id, json_server, json_client = line
+    #     row = Result(timestamp=timestamp, player_id=player_id,
+    #                  event_id=event_id, error_id=error_id,
+    #                  json_server=json_server, json_client=json_client)
+    #
+    #     session.add(row)
+    #     session.commit()
 
 
 if __name__ == '__main__':
