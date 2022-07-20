@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from config import DATABASE, client_file, server_file, cheaters_db, SQL_QUERY
+from config import DATABASE, client_file, server_file, cheaters_db, SQL_QUERY, columns
 
 import pandas as pd
 
@@ -43,7 +43,6 @@ class Client(Base):
     """
     __tablename__ = 'client'
 
-    # id = Column(Integer, primary_key=True)
     timestamp = Column('timestamp', TIMESTAMP(timezone=False))
     player_id = Column(Integer)
     error_id = Column(String, primary_key=True)
@@ -56,7 +55,6 @@ class Server(Base):
     """
     __tablename__ = 'server'
 
-    # id = Column(Integer, primary_key=True)
     timestamp = Column('timestamp', TIMESTAMP(timezone=False))
     event_id = Column(String)
     error_id = Column(String, primary_key=True)
@@ -90,50 +88,25 @@ def table_into_db(db_name, table_name):
     df.to_sql(con=engine, name=table_name, if_exists='append')
 
 
+def add_to_table_data(table_name, data):
+    """
+    Добавление данных (список) в нужную таблицу
+    """
+    df = pd.DataFrame(data, columns=columns)
+    df.to_sql(con=engine, name=table_name, if_exists='append')
+
+
 def main():
     """
     Главная точка входа в скрипт и запуск всего
     """
-    # csv_to_sql(server_file, 'server')
-    # csv_to_sql(client_file, 'client')
-    # table_into_db(cheaters_db, 'cheaters')
-    columns = ('timestamp', 'player_id', 'event_id', 'error_id', 'json_server', 'json_client')
-
+    csv_to_sql(server_file, 'server')
+    csv_to_sql(client_file, 'client')
+    table_into_db(cheaters_db, 'cheaters')
 
     # SQL запрос для поиска данных из 3 таблиц
     q = session.execute(text(SQL_QUERY)).all()
-    print(type(q[1]))
-    print(q[1])
-    breakpoint()
-
-    query2 = "INSERT INTO result VALUES(?, ?, ?, ?, ?, ?)"
-
-    try:
-        r_set = session.execute(query2, q)
-    except SQLAlchemyError as e:
-        # error = str(e.__dict__['orig'])
-        print(e)
-    else:
-        print("No of records added  : ", r_set.rowcount)
-
-    # q_new = [dict(zip(columns, line)) for line in q]
-    # print(q_new[2])
-    # # breakpoint()
-    # try:
-    #     session.execute(Result.__table__.insert().values(q_new))
-    # except Exception as e:
-    #     print(e)
-    #     breakpoint()
-    # в цикле все записываем в таблицу result
-    # for line in q:
-    #     print(line)
-    #     timestamp, player_id, event_id, error_id, json_server, json_client = line
-    #     row = Result(timestamp=timestamp, player_id=player_id,
-    #                  event_id=event_id, error_id=error_id,
-    #                  json_server=json_server, json_client=json_client)
-    #
-    #     session.add(row)
-    #     session.commit()
+    add_to_table_data('result', q)
 
 
 if __name__ == '__main__':
