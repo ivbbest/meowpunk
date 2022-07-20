@@ -12,6 +12,7 @@ DATABASE = {
 client_file = 'client.csv'
 server_file = 'server.csv'
 cheaters_db = 'cheaters.db'
+columns = ['timestamp', 'player_id', 'event_id', 'error_id', 'json_server', 'json_client']
 
 """
 SQL запрос, который решает следующую задачу
@@ -31,5 +32,5 @@ SQL_QUERY = """SELECT s."timestamp", c.player_id, s.event_id,
                WHERE c.player_id NOT IN
                (SELECT player_id
                 FROM cheaters AS t
-                WHERE CAST(t.ban_time AS timestamp) < c."timestamp" - interval '1 day'
+
                                             )"""
